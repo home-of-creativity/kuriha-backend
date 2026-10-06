@@ -1,0 +1,25 @@
+# Copy to /etc/caddy/Caddyfile on the server.
+# Point the site address and public path at this install.
+
+www.kuriha-group.com {
+	redir https://kuriha-group.com{uri} permanent
+}
+
+{$SITE_ADDRESS:kuriha-group.com} {
+	root * {$APP_PUBLIC:/var/www/kuriha-backend/public}
+	encode zstd gzip
+
+	request_body {
+		max_size 20MB
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	php_fastcgi unix/{$PHP_SOCKET:/run/php/php8.2-fpm.sock}
+	file_server
+}
