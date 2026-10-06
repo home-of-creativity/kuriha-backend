@@ -10,6 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build dashboard
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Compile dashboard
+        working-directory: dashboard
+        run: |
+          npm install
+          npm run build
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.2
         env:
@@ -24,3 +38,14 @@ jobs:
             set -e
             cd "${{ secrets.PROJECT_PATH }}"
             bash deploy/deploy.sh
+
+      - name: Upload dashboard
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: public/dashboard/*
+          target: ${{ secrets.PROJECT_PATH }}/public/dashboard
+          strip_components: 2
