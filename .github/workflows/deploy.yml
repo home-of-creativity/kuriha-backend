@@ -70,7 +70,7 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             set -e
-            mkdir -p "${{ secrets.PROJECT_PATH }}"
+            mkdir -p "$HOME/kuriha-backend"
 
       - name: Upload release
         uses: appleboy/scp-action@v0.1.7
@@ -81,7 +81,7 @@ jobs:
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           port: ${{ secrets.SSH_PORT }}
           source: release.tar.gz
-          target: ${{ secrets.PROJECT_PATH }}
+          target: /tmp
 
       - name: Extract and migrate
         uses: appleboy/ssh-action@v1.2.2
@@ -93,7 +93,7 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             set -e
-            cd "${{ secrets.PROJECT_PATH }}"
-            tar -xzf release.tar.gz
-            rm -f release.tar.gz
-            bash deploy/deploy.sh
+            mkdir -p "$HOME/kuriha-backend"
+            tar -xzf /tmp/release.tar.gz -C "$HOME/kuriha-backend"
+            rm -f /tmp/release.tar.gz
+            bash "$HOME/kuriha-backend/deploy/deploy.sh"
