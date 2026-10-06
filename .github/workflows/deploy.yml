@@ -46,6 +46,7 @@ jobs:
 
       - name: Pack release
         run: |
+          set +e
           tar -czf release.tar.gz \
             --exclude .git \
             --exclude release.tar.gz \
@@ -53,9 +54,11 @@ jobs:
             --exclude dashboard/node_modules \
             .
           status=$?
+          set -e
           if [ "$status" -gt 1 ]; then
             exit "$status"
           fi
+          test -s release.tar.gz
 
       - name: Prepare remote directory
         uses: appleboy/ssh-action@v1.2.2
