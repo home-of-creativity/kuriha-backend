@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { api, setToken, type User } from '../api';
+import { api, setToken, type User } from './api';
 
 export function Login({ onSuccess }: { onSuccess: (user: User) => void }) {
   const [email, setEmail] = useState('admin@example.com');

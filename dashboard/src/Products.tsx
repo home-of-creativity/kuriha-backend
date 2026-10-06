@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { api, type Category, type Product } from '../api';
+import { api, type Category, type Product } from './api';
 
 const empty = {
   name_ar: '',
