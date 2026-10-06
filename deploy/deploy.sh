@@ -4,6 +4,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 git pull --ff-only origin main
+
+if [[ -z "${ENV_FILE_B64:-}" ]]; then
+  echo "ENV_FILE_B64 is missing. Set the ENV_PRODUCTION GitHub secret." >&2
+  exit 1
+fi
+
+printf '%s' "$ENV_FILE_B64" | tr -d '[:space:]' | base64 -d > .env
+chmod 600 .env
+
 composer install --no-dev --optimize-autoloader --no-interaction
 npm ci --prefix dashboard
 npm run build --prefix dashboard
