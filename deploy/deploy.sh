@@ -3,26 +3,27 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-git pull --ff-only origin main
-
-if [[ -z "${ENV_FILE_B64:-}" ]]; then
-  echo "ENV_FILE_B64 is missing. Set the ENV_PRODUCTION GitHub secret." >&2
+if [[ ! -f .env ]]; then
+  echo ".env is missing from the uploaded release." >&2
   exit 1
 fi
 
-printf '%s' "$ENV_FILE_B64" | tr -d '[:space:]' | base64 -d > .env
 chmod 600 .env
+chmod -R ug+rwx storage bootstrap/cache
 
-if command -v composer >/dev/null 2>&1; then
-  composer install --no-dev --optimize-autoloader --no-interaction
+if command -v php >/dev/null 2>&1; then
+  PHP_BIN="$(command -v php)"
 else
-  php composer.phar install --no-dev --optimize-autoloader --no-interaction
+  PHP_BIN="$(ls -d /opt/cpanel/ea-php8*/root/usr/bin/php 2>/dev/null | sort | tail -n 1)"
 fi
 
-php artisan migrate --force
-php artisan storage:link || true
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+if [[ -z "${PHP_BIN}" ]]; then
+  echo "PHP was not found on this cPanel account." >&2
+  exit 1
+fi
 
-rm -rf public/dashboard
+"$PHP_BIN" artisan migrate --force
+"$PHP_BIN" artisan storage:link || true
+"$PHP_BIN" artisan config:cache
+"$PHP_BIN" artisan route:cache
+"$PHP_BIN" artisan view:cache

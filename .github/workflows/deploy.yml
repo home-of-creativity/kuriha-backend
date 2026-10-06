@@ -13,39 +13,77 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build dashboard
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer:v2
+
+      - name: Install PHP dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Compile dashboard
+      - name: Build dashboard
         working-directory: dashboard
         run: |
           npm install
           npm run build
 
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.2.2
+      - name: Write production env
         env:
           ENV_FILE_B64: ${{ secrets.ENV_PRODUCTION }}
+        run: |
+          if [ -z "$ENV_FILE_B64" ]; then
+            echo "ENV_PRODUCTION secret is missing" >&2
+            exit 1
+          fi
+          printf '%s' "$ENV_FILE_B64" | tr -d '[:space:]' | base64 -d > .env
+          chmod 600 .env
+
+      - name: Pack release
+        run: |
+          tar -czf release.tar.gz \
+            --exclude .git \
+            --exclude release.tar.gz \
+            --exclude node_modules \
+            --exclude dashboard/node_modules \
+            .
+
+      - name: Prepare remote directory
+        uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          envs: ENV_FILE_B64
           script: |
             set -e
-            cd "${{ secrets.PROJECT_PATH }}"
-            bash deploy/deploy.sh
+            mkdir -p "${{ secrets.PROJECT_PATH }}"
 
-      - name: Upload dashboard
+      - name: Upload release
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          source: public/dashboard/*
-          target: ${{ secrets.PROJECT_PATH }}/public/dashboard
-          strip_components: 2
+          source: release.tar.gz
+          target: ${{ secrets.PROJECT_PATH }}
+
+      - name: Extract and migrate
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+            cd "${{ secrets.PROJECT_PATH }}"
+            tar -xzf release.tar.gz
+            rm -f release.tar.gz
+            bash deploy/deploy.sh
